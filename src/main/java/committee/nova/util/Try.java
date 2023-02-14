@@ -14,16 +14,15 @@ public interface Try<T> {
         default T get() {
             try {
                 return this.doGet();
-            } catch (RuntimeException | Error var2) {
-                throw var2;
-            } catch (Throwable var3) {
-                throw new ThrownByLambdaException(var3);
+            } catch (Throwable t) {
+                if (NonFatal.check(t)) throw new NonFatalException(t);
+                throw new RuntimeException(t);
             }
         }
     }
 
-    final class ThrownByLambdaException extends RuntimeException {
-        public ThrownByLambdaException(Throwable cause) {
+    final class NonFatalException extends RuntimeException {
+        public NonFatalException(Throwable cause) {
             super(cause);
         }
     }
@@ -31,9 +30,8 @@ public interface Try<T> {
     static <U> Try<U> of(ThrowingSupplier<U> sup) {
         try {
             return Success.apply(sup.get());
-        } catch (Throwable t) {
-            if (NonFatal.check(t)) return Failure.apply(t);
-            throw t;
+        } catch (NonFatalException e) {
+            return Failure.apply(e.getCause());
         }
     }
 
@@ -237,6 +235,9 @@ public interface Try<T> {
     }
 
     class NonFatal {
+        private NonFatal() {
+        }
+
         private static final Class<? extends Throwable>[] fatals = (Class<? extends Throwable>[]) new Class<?>[]{
                 VirtualMachineError.class, ThreadDeath.class, InterruptedException.class, LinkageError.class
         };
