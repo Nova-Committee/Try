@@ -8,7 +8,27 @@ import java.util.function.Supplier;
 
 @SuppressWarnings({"unchecked", "unused"})
 public interface Try<T> {
-    static <U> Try<U> of(Supplier<U> sup) {
+    interface ThrowingSupplier<T> extends Supplier<T> {
+        T doGet() throws Throwable;
+
+        default T get() {
+            try {
+                return this.doGet();
+            } catch (RuntimeException | Error var2) {
+                throw var2;
+            } catch (Throwable var3) {
+                throw new ThrownByLambdaException(var3);
+            }
+        }
+    }
+
+    final class ThrownByLambdaException extends RuntimeException {
+        public ThrownByLambdaException(Throwable cause) {
+            super(cause);
+        }
+    }
+
+    static <U> Try<U> of(ThrowingSupplier<U> sup) {
         try {
             return Success.apply(sup.get());
         } catch (Throwable t) {

@@ -7,11 +7,18 @@
 
     <groupId>committee.nova</groupId>
     <artifactId>Try</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
     </properties>
+
+    <distributionManagement>
+        <repository>
+            <id>nova</id>
+            <url>https://maven.nova-committee.cn/releases</url>
+        </repository>
+    </distributionManagement>
 
 </project>
