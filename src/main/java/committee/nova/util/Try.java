@@ -27,12 +27,16 @@ public interface Try<T> {
         }
     }
 
-    static <U> Try<U> of(ThrowingSupplier<U> sup) {
+    static <U> Try<U> of(ThrowingSupplier<U> s) {
         try {
-            return Success.apply(sup.get());
+            return new Success<>(s.get());
         } catch (NonFatalException e) {
-            return Failure.apply(e.getCause());
+            return new Failure<>(e.getCause());
         }
+    }
+
+    static <U> Lazy<U> lazy(ThrowingSupplier<U> s) {
+        return Lazy.of(s);
     }
 
     boolean isFailure();
@@ -64,12 +68,8 @@ public interface Try<T> {
     class Success<T> implements Try<T> {
         private final T value;
 
-        public Success(T value) {
+        private Success(T value) {
             this.value = value;
-        }
-
-        public static <U> Success<U> apply(U value) {
-            return new Success<>(value);
         }
 
         @Override
@@ -107,7 +107,7 @@ public interface Try<T> {
             try {
                 return fun.apply(value);
             } catch (Throwable t) {
-                if (NonFatal.check(t)) return Failure.apply(t);
+                if (NonFatal.check(t)) return new Failure<>(t);
                 throw t;
             }
         }
@@ -120,9 +120,9 @@ public interface Try<T> {
         @Override
         public Try<T> filter(Predicate<T> p) {
             try {
-                return p.test(value) ? this : Failure.apply(new NoSuchElementException("Predicate does not hold for " + value));
+                return p.test(value) ? this : new Failure<>(new NoSuchElementException("Predicate does not hold for " + value));
             } catch (Throwable t) {
-                if (NonFatal.check(t)) return Failure.apply(t);
+                if (NonFatal.check(t)) return new Failure<>(t);
                 throw t;
             }
         }
@@ -144,19 +144,15 @@ public interface Try<T> {
 
         @Override
         public Try<Throwable> failed() {
-            return Failure.apply(new UnsupportedOperationException("Cannot use failed in a Success!"));
+            return new Failure<>(new UnsupportedOperationException("Cannot use failed in a Success!"));
         }
     }
 
     class Failure<T> implements Try<T> {
         private final Throwable throwable;
 
-        public Failure(Throwable throwable) {
+        private Failure(Throwable throwable) {
             this.throwable = throwable;
-        }
-
-        public static <U> Failure<U> apply(Throwable throwable) {
-            return new Failure<>(throwable);
         }
 
         @Override
@@ -208,7 +204,7 @@ public interface Try<T> {
             try {
                 return fun.apply(throwable);
             } catch (Throwable t) {
-                if (NonFatal.check(t)) return Failure.apply(t);
+                if (NonFatal.check(t)) return new Failure<>(t);
                 throw t;
             }
         }
@@ -218,7 +214,7 @@ public interface Try<T> {
             try {
                 return Try.of(() -> fun.apply(throwable));
             } catch (Throwable t) {
-                if (NonFatal.check(t)) return Failure.apply(t);
+                if (NonFatal.check(t)) return new Failure<>(t);
                 throw t;
             }
         }
@@ -230,7 +226,7 @@ public interface Try<T> {
 
         @Override
         public Try<Throwable> failed() {
-            return Success.apply(throwable);
+            return new Success<>(throwable);
         }
     }
 
@@ -246,6 +242,22 @@ public interface Try<T> {
             for (final Class<? extends Throwable> fatal : fatals)
                 if (fatal.isAssignableFrom(t.getClass())) return false;
             return true;
+        }
+    }
+
+    class Lazy<T> {
+        private final ThrowingSupplier<T> sup;
+
+        private Lazy(ThrowingSupplier<T> sup) {
+            this.sup = sup;
+        }
+
+        public static <U> Lazy<U> of(ThrowingSupplier<U> s) {
+            return new Lazy<>(s);
+        }
+
+        public Try<T> run() {
+            return Try.of(sup);
         }
     }
 }
