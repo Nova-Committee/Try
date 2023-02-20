@@ -6,6 +6,16 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+/**
+ * The `Try` type represents a lazy or non-lazy computation that may either result in an exception, or return a
+ * successfully computed value.
+ * <p>
+ * Instances of `Try<T>` can be: {@link Success}, {@link Failure}, {@link Lazy}
+ * <p>
+ * If this is a {@link Lazy} instance, the method `run()V` will be called first while calling any other method.
+ *
+ * @author Twitter, Scala, Tapio
+ */
 @SuppressWarnings({"unchecked", "unused"})
 public interface Try<T> {
     interface ThrowingSupplier<T> extends Supplier<T> {
@@ -27,6 +37,11 @@ public interface Try<T> {
         }
     }
 
+    /**
+     * @return Returns a {@link Success} if {@link Supplier#get()} runs successfully on the param `s`,
+     * a {@link Failure} if a {@link NonFatalException} is caught,
+     * otherwise throws the uncaught throwable.
+     */
     static <U> Try<U> of(ThrowingSupplier<U> s) {
         try {
             return new Success<>(s.get());
@@ -35,36 +50,96 @@ public interface Try<T> {
         }
     }
 
+    /**
+     * @return Returns a {@link Lazy} with the supplier `s`,
+     * The supplier won't be computed until {@link Try#run()} or any other method is called.
+     */
     static <U> Lazy<U> lazy(ThrowingSupplier<U> s) {
         return Lazy.of(s);
     }
 
+    /**
+     * @return If this is a {@link Lazy} instance: runs the supplier and returns a non-lazy `Try` instance.
+     * Otherwise, does nothing and returns this.
+     */
     Try<T> run();
 
+    /**
+     * @return `true` if the `Try` is a {@link Failure}, `false` otherwise.
+     */
     boolean isFailure();
 
+    /**
+     * @return `true` if the `Try` is a {@link Success}, `false` otherwise.
+     */
     boolean isSuccess();
 
+    /**
+     * @return Returns the value from this {@link Success}
+     * or throws the exception if this is a {@link Failure}.
+     */
     T get() throws Throwable;
 
+    /**
+     * @return Returns the value from this {@link Success}
+     * or the given `defaultValue` argument if this is a {@link Failure}.
+     * @apiNote This will throw an exception if it is a {@link Failure} and the computation of the defaultValue throws an exception.
+     */
     T getOrElse(T defaultValue);
 
+    /**
+     * @return Returns this if it's a {@link Success}
+     * or the given `defaultTry` argument if this is a {@link Failure}.
+     */
     Try<T> orElse(Try<T> defaultTry);
 
+    /**
+     * Applies the given function `fun` if this is a {@link Success},
+     * otherwise does nothing if this is a {@link Failure}.
+     *
+     * @apiNote If the `fun` throws, then this method may throw an exception.
+     */
     <U> void foreach(Function<T, U> fun);
 
+    /**
+     * @return Returns the given function `fun` applied to the value from this {@link Success}
+     * or returns this if this is a {@link Failure}.
+     */
     <U> Try<U> flatMap(Function<T, Try<U>> fun);
 
+    /**
+     * @return Maps the given function `fun` to the value from this {@link Success}
+     * or returns this if this is a {@link Failure}.
+     */
     <U> Try<U> map(Function<T, U> fun);
 
+    /**
+     * @return Converts this to a {@link Failure} if the given predicate `p` is not satisfied.
+     */
     Try<T> filter(Predicate<T> p);
 
+    /**
+     * @return Applies the given function `fun` if this is a {@link Failure}, otherwise returns this if this is a {@link Success}.
+     * This is like `flatMap` for the exception.
+     */
     Try<T> recoverWith(Function<Throwable, Try<T>> fun);
 
+    /**
+     * @return Applies the given function `f` if this is a {@link Failure}, otherwise returns this if this is a {@link Success}.
+     * This is like `map` for the exception.
+     */
     Try<T> recover(Function<Throwable, T> fun);
 
+    /**
+     * @return Returns {@link Optional#empty()} if this is a {@link Failure}
+     * or a {@link Optional#of(T)} containing the value if this is a {@link Success}.
+     */
     Optional<T> toOptional();
 
+    /**
+     * @return Completes this `Try` with an exception wrapped in a {@link Success}. The exception is either the exception that the
+     * `Try` failed with (if a {@link Failure}) or an `UnsupportedOperationException`.
+     */
     Try<Throwable> failed();
 
     class Success<T> implements Try<T> {
