@@ -39,6 +39,8 @@ public interface Try<T> {
         return Lazy.of(s);
     }
 
+    Try<T> run();
+
     boolean isFailure();
 
     boolean isSuccess();
@@ -70,6 +72,11 @@ public interface Try<T> {
 
         private Success(T value) {
             this.value = value;
+        }
+
+        @Override
+        public Try<T> run() {
+            return this;
         }
 
         @Override
@@ -153,6 +160,11 @@ public interface Try<T> {
 
         private Failure(Throwable throwable) {
             this.throwable = throwable;
+        }
+
+        @Override
+        public Try<T> run() {
+            return this;
         }
 
         @Override
@@ -321,6 +333,7 @@ public interface Try<T> {
             return run().failed();
         }
 
+        @Override
         public Try<T> run() {
             return Try.of(sup);
         }
