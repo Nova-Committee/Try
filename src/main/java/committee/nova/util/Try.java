@@ -245,7 +245,7 @@ public interface Try<T> {
         }
     }
 
-    class Lazy<T> {
+    class Lazy<T> implements Try<T> {
         private final ThrowingSupplier<T> sup;
 
         private Lazy(ThrowingSupplier<T> sup) {
@@ -254,6 +254,71 @@ public interface Try<T> {
 
         public static <U> Lazy<U> of(ThrowingSupplier<U> s) {
             return new Lazy<>(s);
+        }
+
+        @Override
+        public boolean isFailure() {
+            return run().isFailure();
+        }
+
+        @Override
+        public boolean isSuccess() {
+            return run().isSuccess();
+        }
+
+        @Override
+        public T get() throws Throwable {
+            return run().get();
+        }
+
+        @Override
+        public T getOrElse(T defaultValue) {
+            return run().getOrElse(defaultValue);
+        }
+
+        @Override
+        public Try<T> orElse(Try<T> defaultTry) {
+            return run().orElse(defaultTry);
+        }
+
+        @Override
+        public <U> void foreach(Function<T, U> fun) {
+            run().foreach(fun);
+        }
+
+        @Override
+        public <U> Try<U> flatMap(Function<T, Try<U>> fun) {
+            return run().flatMap(fun);
+        }
+
+        @Override
+        public <U> Try<U> map(Function<T, U> fun) {
+            return run().map(fun);
+        }
+
+        @Override
+        public Try<T> filter(Predicate<T> p) {
+            return run().filter(p);
+        }
+
+        @Override
+        public Try<T> recoverWith(Function<Throwable, Try<T>> fun) {
+            return run().recoverWith(fun);
+        }
+
+        @Override
+        public Try<T> recover(Function<Throwable, T> fun) {
+            return run().recover(fun);
+        }
+
+        @Override
+        public Optional<T> toOptional() {
+            return run().toOptional();
+        }
+
+        @Override
+        public Try<Throwable> failed() {
+            return run().failed();
         }
 
         public Try<T> run() {
