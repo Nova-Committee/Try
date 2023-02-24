@@ -2,7 +2,6 @@ package committee.nova.util;
 
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -13,21 +12,40 @@ import java.util.function.Supplier;
  * <p>
  * Instances of `Try<T>` can be: {@link Success}, {@link Failure}, {@link Lazy}
  * <p>
- * If this is a {@link Lazy} instance, the method `run` will be called first while calling any other method.
+ * If this is a {@link Lazy} instance, the method `run()V` will be called first while calling any other method.
  *
  * @author Twitter, Scala, Tapio
  */
 @SuppressWarnings({"unchecked", "unused"})
 public interface Try<T> {
+    interface ThrowingSupplier<T> extends Supplier<T> {
+        T doGet() throws Throwable;
+
+        default T get() {
+            try {
+                return this.doGet();
+            } catch (Throwable t) {
+                if (t instanceof Exception) throw new NonFatalException(t);
+                throw new RuntimeException(t);
+            }
+        }
+    }
+
+    final class NonFatalException extends RuntimeException {
+        public NonFatalException(Throwable cause) {
+            super(cause);
+        }
+    }
+
     /**
      * @return Returns a {@link Success} if {@link Supplier#get()} runs successfully on the param `s`,
-     * a {@link Failure} if a {@link Exception} is caught,
+     * a {@link Failure} if a {@link NonFatalException} is caught,
      * otherwise throws the uncaught throwable.
      */
-    static <U> Try<U> of(Callable<U> s) {
+    static <U> Try<U> of(ThrowingSupplier<U> s) {
         try {
-            return new Success<>(s.call());
-        } catch (Exception e) {
+            return new Success<>(s.get());
+        } catch (NonFatalException e) {
             return new Failure<>(e.getCause());
         }
     }
@@ -36,7 +54,7 @@ public interface Try<T> {
      * @return Returns a {@link Lazy} with the supplier `s`,
      * The supplier won't be computed until {@link Try#run()} or any other method is called.
      */
-    static <U> Lazy<U> lazy(Callable<U> s) {
+    static <U> Lazy<U> lazy(ThrowingSupplier<U> s) {
         return Lazy.of(s);
     }
 
@@ -170,8 +188,9 @@ public interface Try<T> {
         public <U> Try<U> flatMap(Function<T, Try<U>> fun) {
             try {
                 return fun.apply(value);
-            } catch (Exception t) {
-                return new Failure<>(t);
+            } catch (Throwable t) {
+                if (t instanceof Exception) return new Failure<>(t);
+                throw t;
             }
         }
 
@@ -184,8 +203,9 @@ public interface Try<T> {
         public Try<T> filter(Predicate<T> p) {
             try {
                 return p.test(value) ? this : new Failure<>(new NoSuchElementException("Predicate does not hold for " + value));
-            } catch (Exception t) {
-                return new Failure<>(t);
+            } catch (Throwable t) {
+                if (t instanceof Exception) return new Failure<>(t);
+                throw t;
             }
         }
 
@@ -270,8 +290,9 @@ public interface Try<T> {
         public Try<T> recoverWith(Function<Throwable, Try<T>> fun) {
             try {
                 return fun.apply(throwable);
-            } catch (Exception t) {
-                return new Failure<>(t);
+            } catch (Throwable t) {
+                if (t instanceof Exception) return new Failure<>(t);
+                throw t;
             }
         }
 
@@ -279,8 +300,9 @@ public interface Try<T> {
         public Try<T> recover(Function<Throwable, T> fun) {
             try {
                 return Try.of(() -> fun.apply(throwable));
-            } catch (Exception t) {
-                return new Failure<>(t);
+            } catch (Throwable t) {
+                if (t instanceof Exception) return new Failure<>(t);
+                throw t;
             }
         }
 
@@ -296,13 +318,13 @@ public interface Try<T> {
     }
 
     class Lazy<T> implements Try<T> {
-        private final Callable<T> sup;
+        private final ThrowingSupplier<T> sup;
 
-        private Lazy(Callable<T> sup) {
+        private Lazy(ThrowingSupplier<T> sup) {
             this.sup = sup;
         }
 
-        public static <U> Lazy<U> of(Callable<U> s) {
+        public static <U> Lazy<U> of(ThrowingSupplier<U> s) {
             return new Lazy<>(s);
         }
 
