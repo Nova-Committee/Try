@@ -132,7 +132,7 @@ public interface Try<T> {
 
     /**
      * @return Returns {@link Optional#empty()} if this is a {@link Failure}
-     * or a {@link Optional#of(T)} containing the value if this is a {@link Success}.
+     * or a {@link Optional#ofNullable(T)} containing the value if this is a {@link Success}.
      */
     Optional<T> toOptional();
 
@@ -221,7 +221,7 @@ public interface Try<T> {
 
         @Override
         public Optional<T> toOptional() {
-            return Optional.of(value);
+            return Optional.ofNullable(value);
         }
 
         @Override
